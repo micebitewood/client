@@ -1,1 +1,1 @@
-java RandomPlayer $1
+python randomPlayer.py $1
