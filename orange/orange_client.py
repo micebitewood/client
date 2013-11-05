@@ -7,7 +7,7 @@ from exceptions import ZeroDivisionError
 teamname="Orange\n"
 port=6789
 eom="<EOM>\n"
-maxlen=4098
+maxlen=1
 
 print(sys.argv)
 if len(sys.argv)>1:
@@ -52,12 +52,13 @@ if __name__=="__main__":
         sendsocket(s, teamname)
         input=readsocket(s)
 
-        orange_file = open("orange_input.txt", "w", 0)
+        orange_file = open("orange_init.txt", "w", 0)
         orange_file.write(input)
         os.system("./orange 0");
         # print "GOT NODES N'EDGES\n"
 
         while True:
+            print "Waiting for the server..\n"
             input = readsocket(s)
             # print "GOT FIRST STATE\n"
 

@@ -50,6 +50,7 @@ int main(int argc, char ** argv) {
 		cout << "Incorrect arguments (1 required: <mode>)\n";
 		return 1;
 	}
+	//cout << "starting in mode " << argv[1] << endl;
 
 	int mode = atoi(argv[1]);
 	string buffer;
@@ -64,7 +65,7 @@ int main(int argc, char ** argv) {
 
 	if (mode == 0) {
 		/* PHASE 2 */
-		ifstream infile("orange_input.txt");
+		ifstream infile("orange_init.txt");
 
 		// Node format
 		getline(infile, buffer);
@@ -137,7 +138,7 @@ int main(int argc, char ** argv) {
 		ss >> num_munched;
 		do {
 			ss >> delimiter >> id;
-			cout << "Got id: " << id << endl;
+			//cout << "Got id: " << id << endl;
 
 			assert((unsigned)id < nodes.size());
 			nodes[id].munched = true;
@@ -168,7 +169,7 @@ int main(int argc, char ** argv) {
 		ss >> num_munchers;
 		do {
 			ss >> delimiter >> id >> delimiter >> a >> b >> c >> d >> delimiter >> pc;
-			cout << "Got my id: " << id << endl;
+			//cout << "Got my id: " << id << endl;
 
 			assert((unsigned)id < nodes.size());
 			stringstream code;
@@ -185,7 +186,7 @@ int main(int argc, char ** argv) {
 		ss >> num_munchers;
 		do {
 			ss >> delimiter >> id;
-			cout << "Got opp id: " << id << endl;
+			//cout << "Got opp id: " << id << endl;
 
 			assert((unsigned)id < nodes.size());
 			opp_munchers.push_back(Nanomuncher(id, ""));
@@ -226,23 +227,23 @@ int main(int argc, char ** argv) {
 		/* CALCULATE NEXT MOVES */
 		vector<Nanomuncher> spawn;
 
-		cout << "OPP MUNCHERS SIZE: " << opp_munchers.size() << endl;
+		//cout << "OPP MUNCHERS SIZE: " << opp_munchers.size() << endl;
 		for (vector<Nanomuncher>::iterator it = opp_munchers.begin(); it != opp_munchers.end(); it++) {
 			if (spawn.size() >= my_remaining) break;
 			int degree = get_degree_1(it->node_id, nodes);
 			bool definitely_horizontal = false;
 			bool definitely_vertical = false;
 
-			cout << "Opponent degree: " << degree << endl;
+			//cout << "Opponent degree: " << degree << endl;
 			if (degree == 1) {
 				if ((nodes[it->node_id].left != -1 && 
 					!nodes[nodes[it->node_id].left].munched) || 
 					(nodes[it->node_id].right != -1 && 
 					!nodes[nodes[it->node_id].right].munched)) {
-						cout << "D1 - HORIZONTAL" << endl;
+						//cout << "D1 - HORIZONTAL" << endl;
 						definitely_horizontal = true;
 				} else {
-					cout << "D1 - VERTICAL" << endl;
+					//cout << "D1 - VERTICAL" << endl;
 					definitely_vertical = true;
 				}
 			}
@@ -254,33 +255,45 @@ int main(int argc, char ** argv) {
 				else definitely_horizontal = true;
 			}
 			if (definitely_horizontal) {
-				cout << "@@@@@@@@@@@@@@@@" << endl;
+				//cout << "@@@@@@@@@@@@@@@@" << endl;
 				if (nodes[it->node_id].left != -1 && !nodes[nodes[it->node_id].left].munched) { 
 					int left_and_down = nodes[nodes[it->node_id].left].down;
-					if (left_and_down != -1 &&!nodes[left_and_down].munched) {
+					if (left_and_down != -1 && !nodes[left_and_down].munched) {
 						spawn.push_back(Nanomuncher(left_and_down, "udlr", 0));
+						nodes[left_and_down].munched = true;
+					}
+					nodes[nodes[it->node_id].left].munched = true;
+					if (nodes[it->node_id].right != -1 && !nodes[nodes[it->node_id].right].munched) {
+						int right_and_up = nodes[nodes[it->node_id].right].up;
+						int right_and_down = nodes[nodes[it->node_id].right].down;
+
+						if (right_and_down != -1 && !nodes[right_and_down].munched) {
+							spawn.push_back(Nanomuncher(right_and_down, "udlr", 0));
+							nodes[right_and_down].munched = true;
+						} else if (right_and_up != -1 && !nodes[right_and_up].munched) {
+							spawn.push_back(Nanomuncher(right_and_up, "dlru", 0));
+							nodes[right_and_up].munched = true;
+						}
+						nodes[nodes[it->node_id].right].munched = true;
 					}
 				}
-				if (nodes[it->node_id].right != -1 && !nodes[nodes[it->node_id].right].munched) {
-					int right_and_up = nodes[nodes[it->node_id].right].up;
-					if (right_and_up != -1 && !nodes[right_and_up].munched) {
-						spawn.push_back(Nanomuncher(right_and_up, "dlur", 0));
-					}
-				}
-			}
+			} else if (nodes[it->node_id].up != -1) nodes[nodes[it->node_id].up].munched = true;
 			if (definitely_vertical) {
-				cout << "@@@@@@@@" << endl;
+				//cout << "@@@@@@@@" << endl;
 				if (nodes[it->node_id].down != -1 && !nodes[nodes[it->node_id].down].munched) {
 					int down_and_left = nodes[nodes[it->node_id].down].left;
 					if (down_and_left != -1 && !nodes[down_and_left].munched) {
 						spawn.push_back(Nanomuncher(down_and_left, "lrud", 0));
+						nodes[down_and_left].munched = true;
 					}
+					nodes[nodes[it->node_id].down].munched = true;
 				}
 			}
+
 		}
 
 		int non_adversarial_munchers = (my_remaining - spawn.size()) / 2;
-		cout << "non-adversarial munchers: " << non_adversarial_munchers << endl;
+		//cout << "non-adversarial munchers: " << non_adversarial_munchers << endl;
 		for (int i = 0; i < non_adversarial_munchers; i++) {
 			int max_degree = 0;
 			Node best_node;
@@ -288,19 +301,29 @@ int main(int argc, char ** argv) {
 				if (spawn.size() >= my_remaining) break;
 				if (it->munched) continue;
 
-				int degree = get_degree_2(it->id, nodes);
+				int degree = get_degree_1(it->id, nodes);
 				if (degree < max_degree) continue;
 				if (degree > max_degree) {
 					max_degree = degree;
-					best_node = *it;
-				} else if (it->x + it->y > best_node.x + best_node.y) best_node = *it;
+					best_node = *it; 
+				} else if (2 * it->x + 2 * it->y > 2 * best_node.x + 2 * best_node.y) best_node = *it;
 			}
-			spawn.push_back(Nanomuncher(best_node.id, "udlr", 0));
-			nodes[best_node.id].munched = true;
+			if (best_node.down != -1 && !nodes[best_node.down].munched) {
+				spawn.push_back(Nanomuncher(best_node.down, "udlr", 0));
+				nodes[best_node.id].munched = true;
+				nodes[best_node.down].munched = true;
+			} else if (best_node.right != -1 && !nodes[best_node.right].munched) {
+				spawn.push_back(Nanomuncher(best_node.right, "lrud", 0));
+				nodes[best_node.id].munched = true;
+				nodes[best_node.right].munched = true;
+			} else {
+				spawn.push_back(Nanomuncher(best_node.id, "udlr", 0));
+				nodes[best_node.id].munched = true;
+			}
 		}
 		/* OUTPUT MOVES */
 		ofstream outfile("orange_output.txt");
-		cout << "Spawn size: " << spawn.size() << endl;
+		//cout << "Spawn size: " << spawn.size() << endl;
 		outfile << spawn.size();
 		for (vector<Nanomuncher>::iterator it = spawn.begin(); it != spawn.end(); it++) {
 			char delimiter = it == spawn.begin() ? ':' : ',';
@@ -310,6 +333,8 @@ int main(int argc, char ** argv) {
 		outfile.close();
 	}
 
+	//cout << "ending.." << endl;
+	//system("pause");
 	return 0;
 }
 
