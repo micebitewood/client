@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -17,7 +16,6 @@ public class ADD {
     static Socket client;
     static PrintWriter out;
     static BufferedReader in;
-    static PrintWriter output;
     
     private static final String[] programs = {"dlru", "dlur", "drlu", "drul", "dulr", "durl", "ldru", "ldur", "lrdu",
     "lrud", "ludr", "lurd", "rdlu", "rdul", "rldu", "rlud", "rudl", "ruld", "udlr", "udrl", "uldr", "ulrd",
@@ -26,7 +24,6 @@ public class ADD {
     private HashMap<Integer, Integer[]> locations;
     private HashMap<Integer, HashMap<Integer, Character>> edges;
     private HashSet<Integer> remainingNodes;
-    private HashSet<Integer> cloned;
     private List<Nanomuncher> myNanomunchers;
     private List<Integer> otherNanomunchers;
     private HashMap<Integer, Character> newOpponentNanomunchers;
@@ -36,6 +33,8 @@ public class ADD {
     private int opponentRemainingMunchers;
     private long remainingTime;
     private boolean firstRound = true;
+    private HashSet<Integer> visitNextRound;
+    private HashSet<Integer> visited;
     
     public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
         if (args.length != 1) {
@@ -50,7 +49,6 @@ public class ADD {
     public ADD(int port) throws UnknownHostException, IOException {
         client = new Socket("127.0.0.1", port);
         out = new PrintWriter(client.getOutputStream(), true);
-        output = new PrintWriter("output.txt", "UTF-8");
         in = new BufferedReader(new InputStreamReader(client.getInputStream()));
         
         locations = new HashMap<Integer, Integer[]>(); //<nodeid, [x,y]>
@@ -136,8 +134,7 @@ public class ADD {
     	while (parseStat(receive())) {
             System.out.println("remaining munchers: " + remainingMunchers);
             nextMove();
-        }
-        
+    	}
     }
     
     public boolean parseStat(String str) {
@@ -186,7 +183,7 @@ public class ADD {
         opponentRemainingMunchers = Integer.parseInt(remainingInfo[1]);
         remainingTime = Long.parseLong(remainingInfo[2]);
         
-        //Check
+        /*
         System.out.println("New opponent nanos: ");
         for (Entry<Integer, Character> entry : newOpponentNanomunchers.entrySet()) {
         	System.out.print("[" + entry.getKey() + "," + entry.getValue()+ "] ");
@@ -194,6 +191,7 @@ public class ADD {
         			System.out.println("***Error with newOpponentNanomunchers ArrayList.");
         }
         System.out.println("\n");
+        */
         return true;
     }
     
@@ -212,14 +210,8 @@ public class ADD {
     }
 
     private void nextMove() {
-    	System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
     	int numOfMunchers;
     	String munchers;
-    	//check
-    	//Object[] r = remainingNodes.toArray();
-    	//for (int i = 0; i< r.length; i++)
-    		//output.print(r[i] + "\t");
-    	//output.println("\n");
     	
     	//very first round
     	if (firstRound == true) {
@@ -250,7 +242,10 @@ public class ADD {
     
     public String deployMunchersNormal(int numOfMunchers) {
     	System.out.println("-----deployMunchersNormal(" + numOfMunchers + ")");
-    	Iterator<Integer> iterator = remainingNodes.iterator();
+    	
+    	visitNextRound = new HashSet<Integer>();
+    	
+    	Iterator<Integer> iterator;
     	
     	StringBuffer sb = new StringBuffer();
     	sb.append(numOfMunchers + ":");
@@ -260,10 +255,42 @@ public class ADD {
     	int[] lives = new int[numOfMunchers];
     	
     	int nodeid, max;
-    	int min = 1000;
-    	int minIndex = -1;
-    	String program = "";
     	
+    	String program = "";
+    	String finalProgram = "";
+    	HashSet<Integer> added = new HashSet<Integer>();
+    	for (int i = 0; i < numOfMunchers; i++) {
+    		int min = 1000;
+        	int minID = -1;
+    		iterator = remainingNodes.iterator();
+    		while (iterator.hasNext()) {
+    			
+    			nodeid = iterator.next();
+    			if (added.contains(nodeid))
+    				continue;
+    			max = 0;
+    			program = "";
+    			for (int j = 0; j < programs.length; j++) {
+        			int temp = lifeOfMuncher(nodeid, programs[j]);
+        			if (max < temp) {
+        				program = programs[j];
+        				max = temp;
+        			}
+        		}
+    			if (max < min) {
+    				min = max;
+    				minID = nodeid;
+    				finalProgram = program;
+    			}
+    		}
+    		nodeids[i] = minID;
+    		progs[i] = finalProgram;
+    		lives[i] = min;
+    		lifeOfMuncher(minID, finalProgram);
+    		visitNextRound.addAll(visited);
+    		added.add(minID);
+    	}
+    	/*
     	for (int i = 0; i < numOfMunchers; i++) {
     		nodeid = iterator.next();
     		max = 0;
@@ -308,25 +335,26 @@ public class ADD {
     			}
     		}
     	}
-    	
+    	*/
     	for (int i = 0; i < numOfMunchers; i++) {
+    		System.out.println("Location=" + nodeids[i] +" Live=" + lives[i] + " Prog=" + progs[i]);
     		sb.append(nodeids[i] + "/" + progs[i] + ",");
     	}
     	return sb.toString().substring(0, sb.length() - 1);
     }
     
+    //Problem: May double count a long path if nodes are connected
     public String deployMunchersAdversariel(int numOfMunchers) {
     	System.out.println("-----deployMunchersAdversarial(" + numOfMunchers + ")");
+    	visitNextRound = new HashSet<Integer>();
     	Iterator<Integer> iterator;
     	HashSet<Integer> neighbors;
     	String munchers = "";
     	int counter = 0;
-    	
+    	HashSet<Integer> added = new HashSet<Integer>();
     	for (Entry<Integer, Character> entry : newOpponentNanomunchers.entrySet()) {
-    		//output.println("*****Opponent new Nano: [" + entry.getKey() + ", " + entry.getValue() + "]");
     		neighbors = neighborsOfNewOpponentNano(entry.getKey(), entry.getValue());
     		if (neighbors.isEmpty()) {
-    			//output.println("No neighbors.\n");
     			continue;
     		}
     		
@@ -335,18 +363,15 @@ public class ADD {
     		int finalMax = 0;
     		String finalProg = "";
     		int finalID = -1;
-    		//output.println("<Neighbors>:");
-    		//Object[] n = neighbors.toArray();
-    		//for (int i = 0; i < n.length; i++)
-    			//output.print((Integer)n[i] + ",");
-    		//output.println("\n");
+
     		while (iterator.hasNext()) {
+    			
     			int nodeid = iterator.next();
-    			//output.println("\tID<" + nodeid + "> ");
+    			if (added.contains(nodeid))
+    				continue;
     			int max = 0;
     			String maxProg = "";
     			for (int i = 0; i < programs.length; i++) {
-    				//output.println("\t\tProg<" + programs[i] + ">");
     				int temp = lifeOfMuncher(nodeid, programs[i]);
     				if (max < temp) {
     					max = temp;
@@ -359,8 +384,12 @@ public class ADD {
     				finalID = nodeid;
     			}
     		}
+    		lifeOfMuncher(finalID, finalProg);
+    		visitNextRound.addAll(visited);
+    		added.add(finalID);
     		munchers = munchers + finalID + "/" + finalProg + ",";
     		counter++;
+    		System.out.println("Location=" + finalID +" Live=" + finalMax + " Prog=" + finalProg);
     		//check
     		if (finalID == -1 || finalProg.equals("")) {
     			System.out.println("***Error: deployMunchersAdversariel.");
@@ -375,7 +404,7 @@ public class ADD {
     public HashSet<Integer> neighborsOfNewOpponentNano(Integer oppo, Character prevMove) {
     	HashSet<Integer> neighConsider = new HashSet<Integer>();
 		HashMap<Integer, Character> neighbors = edges.get(oppo);
-		if (neighbors.isEmpty())
+		if (neighbors == null || neighbors.isEmpty())
 			return neighConsider;
 
     	for (Entry<Integer, Character> entry : neighbors.entrySet()) {
@@ -397,7 +426,7 @@ public class ADD {
     }
     
     public int lifeOfMuncher(Integer nodeid, String program) {
-    	HashSet<Integer> visited = new HashSet<Integer>();
+    	visited = new HashSet<Integer>();
     	char[] prog = program.toCharArray();
     	int life = recursiveSearch(nodeid, prog, 0, visited);
     	if (life == -1) {
@@ -407,36 +436,27 @@ public class ADD {
     }
     
     public int recursiveSearch(Integer nodeid, char[] prog, int counter, HashSet<Integer> visited) {
-    	//output.println("\t\t\t[At " + nodeid + ", Check " + prog[counter] + "]");
     	int initCounter = counter;
+    	if (visitNextRound.contains(nodeid))
+    		return 0;
     	visited.add(nodeid);
+    	
     	HashMap<Integer, Character> neighbors = edges.get(nodeid);
     	
     	if(neighbors == null || neighbors.isEmpty() )
     		return 0;
     	
-    	int numDir = (initCounter + 3) < 4 ? (initCounter + 3) : (initCounter + 3)%4;
-    	numDir = ((++numDir) == 4)?0:counter;
     	do {
     		for (Entry<Integer,Character> entry: neighbors.entrySet()) {
-    			//output.print("\t\t\t\tCheck: neighbor" + entry.getKey() + " at dir " + entry.getValue());
-    			//if (!remainingNodes.contains(entry.getKey()))
-    				//output.print(" [NOT AVAIL]");
-    			//if (!entry.getValue().equals(prog[counter]))
-    				//output.print(" [NOT DIREC]");
-    			//if (visited.contains(entry.getKey()))
-    				//output.print(" [VISITED]");
-        		if (remainingNodes.contains(entry.getKey()) && entry.getValue().equals(prog[counter]) && !visited.contains(entry.getKey())) {
+        		if (remainingNodes.contains(entry.getKey()) && entry.getValue().equals(prog[counter]) && !visited.contains(entry.getKey()) && !visitNextRound.contains(entry.getKey())) {
         			visited.add(entry.getKey());
         			counter = ((++counter) == 4)?0:counter;
-        			//output.println("[AVAIL][DIREC]");
         			return 1 + recursiveSearch(entry.getKey(), prog, counter, visited);
         		}
-        		//System.out.println();
         	}
-    		//output.println("\n\t\t\tNo edge at curr direction, check next in loop");
     		counter = ((++counter) == 4)?0:counter;
-    	}while(counter!=numDir);
+    	}while(counter!=initCounter);
+    	
     	return 0;
     }
 }
