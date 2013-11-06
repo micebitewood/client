@@ -378,7 +378,7 @@ public class ADD {
     					maxProg = programs[i];
     				}
     			}
-    			if (finalMax < max) {
+    			if (finalMax <= max) {
     				finalMax = max;
     				finalProg = maxProg;
     				finalID = nodeid;
