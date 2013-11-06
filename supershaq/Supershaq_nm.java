@@ -302,6 +302,7 @@ public class Supershaq_nm {
 					}
 				}
 				
+				if(maxProg.steps > 2){
 				totalNanoToplace++;
 				if(totalNanoToplace ==1){
 					outString = outString.concat(maxNodeId+"/"+maxProg.prog);
@@ -311,7 +312,7 @@ public class Supershaq_nm {
 					outString = outString.concat(","+maxNodeId+"/"+maxProg.prog);
 					System.out.println("outString in 3st else: "+ outString);
 				}
-				
+				}
 			}
 		}
 		
