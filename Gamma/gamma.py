@@ -199,7 +199,26 @@ def graph_size(nodes,edges,munched,pos):
                     queue.append(edges[source][d])
     return processed
 
-
+def basic_predict(otherLiveMunchers,munched,nodes,edges):
+    if otherLiveMunchers != []:
+        verdict = []
+        for pos in otherLiveMunchers:
+            i = 0
+            for d in edges[pos]:
+                if edges[pos][d] not in munched:
+                    i+= 1
+                    nextnode = edges[pos][d]
+            if i == 1:
+                j = 0
+                for d in edges[nextnode]:
+                    if edges[nextnode][d] not in munched:
+                        j+= 1
+                        nnextnode = edges[nextnode][d]
+                if j == 1:
+                    verdict.append(nnextnode)
+        if verdict != []:
+            return verdict
+    return None
 
 #-----------------------------------------------------
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -262,7 +281,6 @@ while(True):
                                 longest_path = path
             if longest != 0:
                 future_munched = future_munched.union(longest_path.path)
-                print 'whim:',longest_path.path
                 sendmove+= str(longest_path.path[0]) + '/' + longest_path.program + ','
                 i-= 1
             else:
@@ -270,6 +288,14 @@ while(True):
 
         sendmove = str(remainingStuff[0] - i) + ':' + sendmove[:-1]
         if sendmove == '0:':
+            add_move = ''
+            verdict = basic_predict(otherLiveMunchers,munched,nodes,edges)
+            if verdict != None:
+                for node in verdict:
+                    length,path = whim_path(nodes,edges,munched,node)
+                    if length >= 3:
+                        add_move = str(path.path[0]) + '/' + path.program
+
             longest = 0
             longest_path = Path()
             for pos in range(0,len(nodes) - 1):
@@ -278,7 +304,10 @@ while(True):
                     if longest < length:
                         longest = length
                         longest_path = path
-            print 'last_choice:',longest_path.path
-            sendmove = '1:' + str(longest_path.path[0]) + '/' + longest_path.program
+            if add_move != '':
+                print 'hunger'
+                sendmove = '2:' + str(longest_path.path[0]) + '/' + longest_path.program + ',' + add_move
+            else:
+                sendmove = '1:' + str(longest_path.path[0]) + '/' + longest_path.program
 
     send(sendmove)

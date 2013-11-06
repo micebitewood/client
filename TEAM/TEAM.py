@@ -249,7 +249,7 @@ def greedy_neighbor(munched, nodes, edges, edges_data, otherNewMunchers):
     best_munchers = []
     best_munchers_ind = dict((enemy, 0) for enemy in consider.keys())
     best_score = -1 
-    for trash in range(min(len(otherNewMunchers) * 5000, 50000)):
+    for trash in range(min(len(otherNewMunchers) * 4000, 40000)):
         #Randomly pick new replys per enemy
         munchers_ind = deepcopy(best_munchers_ind)
         for enemy in munchers_ind.keys():

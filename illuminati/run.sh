@@ -1,1 +1,0 @@
-java illuminati_muncher $1
