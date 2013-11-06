@@ -1,1 +1,1 @@
-java illuminati_munchers $1
+java illuminati_muncher $1
