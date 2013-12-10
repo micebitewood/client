@@ -237,6 +237,9 @@ munched = set()
 #print stat
 
 munched_longest = set()
+k = 0
+
+future_path = set()
 
 while(True):
     status = receive()
@@ -271,11 +274,17 @@ while(True):
             for pos in range(0,len(nodes) - 1):
                 if pos not in future_munched:
                     length,path = whim_path(nodes,edges,future_munched,pos)
-                    if length >= 3:
+                    if length >= 4:
                         tmp_munched = future_munched.copy()
                         tmp_munched.add(path.path[0])
                         subgraph = graph_size(nodes,edges,tmp_munched,path.path[1])
-                        if len(subgraph) <= 3 * length and len(path.path) >= 2 * length:
+                        warning = 0
+                        if liveMunchers != []:
+                            for node in liveMunchers:
+                                if node in subgraph:
+                                    warning = 1
+
+                        if len(subgraph) <= 5 * length and len(path.path) >= 1.5 * length and warning == 0:
                             if longest < len(path.path):
                                 longest = len(path.path)
                                 longest_path = path
@@ -292,22 +301,26 @@ while(True):
             verdict = basic_predict(otherLiveMunchers,munched,nodes,edges)
             if verdict != None:
                 for node in verdict:
+                    #print 'verdict: ',verdict
                     length,path = whim_path(nodes,edges,munched,node)
-                    if length >= 3:
+                    if length >= 2:
                         add_move = str(path.path[0]) + '/' + path.program
+                        #print 'hunting: ' + add_move
 
             longest = 0
             longest_path = Path()
             for pos in range(0,len(nodes) - 1):
                 if pos not in munched:
                     length,path = whim_path(nodes,edges,munched,pos)
-                    if longest < length:
+                    if longest < length and len(future_path.intersection(set(path.path))) <= 2:
                         longest = length
                         longest_path = path
+                        future_path.union(set(longest_path.path))
             if add_move != '':
-                print 'hunger'
-                sendmove = '2:' + str(longest_path.path[0]) + '/' + longest_path.program + ',' + add_move
+                sendmove = '1: ' + add_move
+                #sendmove = '2:' + str(longest_path.path[0]) + '/' + longest_path.program + ',' + add_move
             else:
                 sendmove = '1:' + str(longest_path.path[0]) + '/' + longest_path.program
-
+                #print 'longest path: ' + sendmove, longest_path.path
+    k+=1
     send(sendmove)
