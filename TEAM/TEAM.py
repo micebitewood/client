@@ -11,11 +11,13 @@ from copy import deepcopy
 PROGRAMS = {'all': ["dlru", "dlur", "drlu", "drul", "dulr", "durl", 
                     "ldru", "ldur", "lrdu", "lrud", "ludr", "lurd", 
                     "rdlu", "rdul", "rldu", "rlud", "rudl", "ruld", 
-                    "udlr", "udrl", "uldr", "ulrd", "urdl", "urld"], 
+                    "udlr", "udrl", "uldr", "ulrd", "urdl", "urld",
+                    "ulur", "urul"],
              'd':  ["dlru", "dlur", "drlu", "drul", "dulr", "durl"],
              'l':  ["ldru", "ldur", "lrdu", "lrud", "ludr", "lurd"],
              'r':  ["rdlu", "rdul", "rldu", "rlud", "rudl", "ruld"],
-             'u':  ["udlr", "udrl", "uldr", "ulrd", "urdl", "urld"]}
+             'u':  ["udlr", "udrl", "uldr", "ulrd", "urdl", "urld",
+                    "ulur", "urul"]}
 
 class Muncher():
 
@@ -218,7 +220,7 @@ def int_mod_add(x, y, field):
 #Return best (node, program, score) for nodes of interest sorted and maximized by score
 def greedy_neighbor(munched, nodes, edges, edges_data, otherNewMunchers):
     #consider contains a list of munchers we can answer the enemy with
-    consider = dict((m[1], []) for m in otherNewMunchers)
+    consider = dict((m, []) for m in otherNewMunchers)
     for enemy in consider:
         replys = consider[enemy]
         #Look at immediate enemy nbh
@@ -249,7 +251,7 @@ def greedy_neighbor(munched, nodes, edges, edges_data, otherNewMunchers):
     best_munchers = []
     best_munchers_ind = dict((enemy, 0) for enemy in consider.keys())
     best_score = -1 
-    for trash in range(min(len(otherNewMunchers) * 4000, 40000)):
+    for trash in range(min(len(otherNewMunchers) * 10000, 100000)):
         #Randomly pick new replys per enemy
         munchers_ind = deepcopy(best_munchers_ind)
         for enemy in munchers_ind.keys():
@@ -294,7 +296,7 @@ def greedy_global(munched, nodes, edges, edges_data):
 
     return ranking
 
-def greedyMove(munched,nodes,edges, edges_data, otherNewMunchers, round_no, subGs):
+def greedyMove(munched,nodes,edges, edges_data, otherNewMunchers, round_no, subGs, liveMunchers, otherMunchers):
     move_string = str(0)
     node = 0
     program = ''
@@ -308,21 +310,23 @@ def greedyMove(munched,nodes,edges, edges_data, otherNewMunchers, round_no, subG
         for g in subGs:
             g.remove_nodes_from(munched)
         subGs.sort(key = lambda x: len(x), reverse=True)
-        for g in subGs:
-            sub_grs = greedy_global(munched, g.nodes(), edges, edges_data)
-            no_sub_grs = int(min(num_g, round(float(len(g))/(len(nodes) - len(munched)) * num_g)))
-            no_sub_grs = min(num_g, no_sub_grs)
-            for n in sub_grs[:(no_sub_grs + 1)]:
-                greedys.append(n)
-            num_g = num_g - no_sub_grs
-            if num_g <= 0:
-                break
-
         num_g = min(len(otherNewMunchers) - len(scorchers), len(greedys))
         move_string = str(num_next + num_g) + ':'
         for next_move in scorchers[:num_next]:
             move_string += str(next_move[0]) + "/" + str(next_move[1]) + ","
-        for next_move in greedys[:num_g]:
+        if(len(liveMunchers) + len(otherMunchers) == 0):
+            subGs.sort(key = lambda x: len(x), reverse=True)
+            for g in subGs:
+                sub_grs = greedy_global(munched, g.nodes(), edges, edges_data)
+                no_sub_grs = int(min(num_g, round(float(len(g))/(len(nodes) - len(munched)) * num_g)))
+                no_sub_grs = min(num_g, no_sub_grs)
+                for n in sub_grs[:(no_sub_grs + 1)]:
+                    greedys.append(n)
+                num_g = num_g - no_sub_grs
+                if num_g <= 0:
+                    break
+            random.shuffle(greedys)
+            next_move = greedys[0]
             move_string += str(next_move[0]) + "/" + str(next_move[1]) + ","
         move_string = move_string[:-1]
 
@@ -359,7 +363,7 @@ if __name__ == "__main__":
             otherNewMunchers, scores, remainingStuff) = parseStatus(status)
 #        update_owner(newlyMunched, liveMunchers, otherLiveMunchers, nodes_owner)
         munched.update(newlyMunched)
-        send(greedyMove(munched,nodes,edges, edges_data, otherNewMunchers, round_no, subGs))
+        send(greedyMove(munched,nodes,edges, edges_data, otherLiveMunchers, round_no, subGs, liveMunchers, otherLiveMunchers))
         round_no += 1
     print remainingStuff[2]
 
